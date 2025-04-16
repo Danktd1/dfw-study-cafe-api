@@ -43,20 +43,8 @@ async def add_cafe(request: Request):
         body = await request.json()
         print("📥 RAW incoming JSON:", body)
 
-        cafe = Cafe(**body)
-
-        print("🔥 Parsed Cafe Payload:")
-        print("name:", cafe.name)
-        print("address:", cafe.address)
-        print("rating:", cafe.rating)
-        print("wifi:", cafe.wifi)
-        print("outlets:", cafe.outlets)
-        print("hours:", cafe.hours)
-        print("notes:", cafe.notes)
-        print("latitude:", cafe.latitude)
-        print("longitude:", cafe.longitude)
-
-        res = supabase.table("cafes").insert(cafe.dict()).execute()
+        # Skip validation for now
+        res = supabase.table("cafes").insert(body).execute()
         print("🧪 Supabase raw response:", res)
         print("📦 Data:", res.data)
         print("⚠️ Error:", res.error)
@@ -83,3 +71,4 @@ def delete_cafe(cafe_id: int):
     if res.data:
         return {"message": "Cafe deleted"}
     raise HTTPException(status_code=404, detail="Cafe not found")
+
