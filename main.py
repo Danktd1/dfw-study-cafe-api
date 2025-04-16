@@ -40,6 +40,17 @@ def get_cafe(cafe_id: int):
 @app.post("/cafes")
 def add_cafe(cafe: Cafe):
     try:
+        print("🔥 Raw Cafe Payload:")
+        print("name:", cafe.name)
+        print("address:", cafe.address)
+        print("rating:", cafe.rating)
+        print("wifi:", cafe.wifi)
+        print("outlets:", cafe.outlets)
+        print("hours:", cafe.hours)
+        print("notes:", cafe.notes)
+        print("latitude:", cafe.latitude)
+        print("longitude:", cafe.longitude)
+
         res = supabase.table("cafes").insert(cafe.dict()).execute()
         print("🧪 Supabase raw response:", res)
         print("📦 Data:", res.data)
