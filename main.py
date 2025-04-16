@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from supabase import create_client, Client
 import os
@@ -38,9 +38,14 @@ def get_cafe(cafe_id: int):
     raise HTTPException(status_code=404, detail="Cafe not found")
 
 @app.post("/cafes")
-def add_cafe(cafe: Cafe):
+async def add_cafe(request: Request):
     try:
-        print("🔥 Raw Cafe Payload:")
+        body = await request.json()
+        print("📥 RAW incoming JSON:", body)
+
+        cafe = Cafe(**body)
+
+        print("🔥 Parsed Cafe Payload:")
         print("name:", cafe.name)
         print("address:", cafe.address)
         print("rating:", cafe.rating)
