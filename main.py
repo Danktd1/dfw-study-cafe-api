@@ -1,7 +1,7 @@
 # main.py
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from supabase import create_client, Client
+import httpx
 import os
 import traceback
 
@@ -9,8 +9,14 @@ app = FastAPI()
 
 # ===== Supabase Config =====
 SUPABASE_URL = "https://robdpotxzzacuiebsvvx.supabase.co"
+SUPABASE_API = f"{SUPABASE_URL}/rest/v1/cafes"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvYmRwb3R4enphY3VpZWJzdnZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNjAwMjUsImV4cCI6MjA1OTgzNjAyNX0.nVFfTOMXRgtE_cW_q5GuODEPK5fM_bzEOzPmzz7AI4Q"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
 
 # ===== Cafe Model =====
 class Cafe(BaseModel):
@@ -27,15 +33,7 @@ class Cafe(BaseModel):
 # ===== Routes =====
 @app.get("/cafes")
 def get_cafes():
-    res = supabase.table("cafes").select("*").execute()
-    return res.data
-
-@app.get("/cafes/{cafe_id}")
-def get_cafe(cafe_id: int):
-    res = supabase.table("cafes").select("*").eq("id", cafe_id).single().execute()
-    if res.data:
-        return res.data
-    raise HTTPException(status_code=404, detail="Cafe not found")
+    return {"message": "GET cafes route active — use Supabase UI or fetch manually"}
 
 @app.post("/cafes")
 async def add_cafe(request: Request):
@@ -43,13 +41,13 @@ async def add_cafe(request: Request):
         body = await request.json()
         print("📥 RAW incoming JSON:", body)
 
-        # Sanitize Unicode characters
+        # Clean dashes
         if "hours" in body:
             body["hours"] = body["hours"].replace("–", "-")
         if "notes" in body and isinstance(body["notes"], str):
             body["notes"] = body["notes"].replace("–", "-")
 
-        # Ensure proper types
+        # Force types
         body["rating"] = float(body.get("rating", 0))
         body["wifi"] = bool(body.get("wifi", False))
         body["outlets"] = bool(body.get("outlets", False))
@@ -58,31 +56,25 @@ async def add_cafe(request: Request):
 
         print("📤 Final payload to Supabase:", body)
 
-        res = supabase.table("cafes").insert(body).execute()
+        async with httpx.AsyncClient() as client:
+            response = await client.post(SUPABASE_API, json=[body], headers=HEADERS)
+            print("📨 Supabase raw response status:", response.status_code)
+            print("🧾 Supabase raw response:", response.text)
 
-        print("🧪 Supabase full response:", res.__dict__)
-        print("📦 Data:", res.data)
-        print("⚠️ Error:", res.error)
-        print("📊 Status Code:", getattr(res, 'status_code', 'unknown'))
+            if response.status_code >= 400:
+                raise HTTPException(status_code=500, detail=f"Supabase REST error: {response.text}")
 
-        if res.error:
-            raise HTTPException(status_code=500, detail=f"Supabase Error: {res.error}")
-        return res.data
+        return {"message": "Cafe added successfully"}
+
     except Exception as e:
-        print("❌ Unexpected insert error:")
+        print("❌ REST fallback insert error:")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Unexpected Server Error")
+        raise HTTPException(status_code=500, detail="Unexpected Server Error (REST fallback)")
 
 @app.put("/cafes/{cafe_id}")
 def update_cafe(cafe_id: int, cafe: Cafe):
-    res = supabase.table("cafes").update(cafe.dict()).eq("id", cafe_id).execute()
-    if res.data:
-        return res.data
-    raise HTTPException(status_code=404, detail="Cafe not found")
+    return {"message": "PUT not supported in REST fallback demo"}
 
 @app.delete("/cafes/{cafe_id}")
 def delete_cafe(cafe_id: int):
-    res = supabase.table("cafes").delete().eq("id", cafe_id).execute()
-    if res.data:
-        return {"message": "Cafe deleted"}
-    raise HTTPException(status_code=404, detail="Cafe not found")
+    return {"message": "DELETE not supported in REST fallback demo"}
