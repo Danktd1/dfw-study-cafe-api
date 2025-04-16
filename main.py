@@ -1,57 +1,56 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from supabase import create_client, Client
+import os
 
 app = FastAPI()
 
+# ===== Supabase Config =====
+SUPABASE_URL = "https://robdpotxzzacuiebsvvx.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvYmRwb3R4enphY3VpZWJzdnZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQyNjAwMjUsImV4cCI6MjA1OTgzNjAyNX0.nVFfTOMXRgtE_cW_q5GuODEPK5fM_bzEOzPmzz7AI4Q"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# ===== Cafe Model =====
 class Cafe(BaseModel):
     name: str
-    description: str = ""
+    address: str
+    rating: float
+    wifi: bool
+    outlets: bool
+    hours: str
+    notes: str | None = None
     latitude: float
     longitude: float
-    rating: float
-    tags: list[str] = []
+
+# ===== Routes =====
+@app.get("/cafes")
+def get_cafes():
+    res = supabase.table("cafes").select("*").execute()
+    return res.data
+
+@app.get("/cafes/{cafe_id}")
+def get_cafe(cafe_id: int):
+    res = supabase.table("cafes").select("*").eq("id", cafe_id).single().execute()
+    if res.data:
+        return res.data
+    raise HTTPException(status_code=404, detail="Cafe not found")
 
 @app.post("/cafes")
 def add_cafe(cafe: Cafe):
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO cafes (name, description, latitude, longitude, rating, tags) VALUES (%s, %s, %s, %s, %s, %s)",
-                (cafe.name, cafe.description, cafe.latitude, cafe.longitude, cafe.rating, cafe.tags)
-            )
-            conn.commit()
-        return {"message": "Cafe added successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    res = supabase.table("cafes").insert(cafe.dict()).execute()
+    return res.data
 
-@app.get("/cafes/nearby")
-def get_nearby_cafes(lat: float = Query(...), lng: float = Query(...), radius: float = 5.0):
-    try:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, name, description, latitude, longitude, rating, tags,
-                (3959 * acos(
-                    cos(radians(%s)) * cos(radians(latitude)) *
-                    cos(radians(longitude) - radians(%s)) +
-                    sin(radians(%s)) * sin(radians(latitude))
-                )) AS distance
-                FROM cafes
-                HAVING distance < %s
-                ORDER BY distance;
-            """, (lat, lng, lat, radius))
-            cafes = cur.fetchall()
-            return [
-                {
-                    "id": row[0],
-                    "name": row[1],
-                    "description": row[2],
-                    "latitude": row[3],
-                    "longitude": row[4],
-                    "rating": row[5],
-                    "tags": row[6],
-                    "distance_miles": round(row[7], 2)
-                }
-                for row in cafes
-            ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.put("/cafes/{cafe_id}")
+def update_cafe(cafe_id: int, cafe: Cafe):
+    res = supabase.table("cafes").update(cafe.dict()).eq("id", cafe_id).execute()
+    if res.data:
+        return res.data
+    raise HTTPException(status_code=404, detail="Cafe not found")
+
+@app.delete("/cafes/{cafe_id}")
+def delete_cafe(cafe_id: int):
+    res = supabase.table("cafes").delete().eq("id", cafe_id).execute()
+    if res.data:
+        return {"message": "Cafe deleted"}
+    raise HTTPException(status_code=404, detail="Cafe not found")
+
