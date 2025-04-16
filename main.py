@@ -41,11 +41,14 @@ def get_cafe(cafe_id: int):
 def add_cafe(cafe: Cafe):
     try:
         res = supabase.table("cafes").insert(cafe.dict()).execute()
+        if res.error:
+            print("❌ Supabase error:", res.error)
+            raise HTTPException(status_code=500, detail=f"Supabase Error: {res.error['message']}")
         return res.data
     except Exception as e:
-        print("❌ Supabase insert error:")
+        print("❌ Unexpected insert error:")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Supabase Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected Server Error: {e}")
 
 @app.put("/cafes/{cafe_id}")
 def update_cafe(cafe_id: int, cafe: Cafe):
@@ -60,3 +63,4 @@ def delete_cafe(cafe_id: int):
     if res.data:
         return {"message": "Cafe deleted"}
     raise HTTPException(status_code=404, detail="Cafe not found")
+
