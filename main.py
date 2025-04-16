@@ -49,8 +49,18 @@ async def add_cafe(request: Request):
         if "notes" in body and isinstance(body["notes"], str):
             body["notes"] = body["notes"].replace("–", "-")
 
+        # Ensure proper types
+        body["rating"] = float(body.get("rating", 0))
+        body["wifi"] = bool(body.get("wifi", False))
+        body["outlets"] = bool(body.get("outlets", False))
+        body["latitude"] = float(body.get("latitude", 0))
+        body["longitude"] = float(body.get("longitude", 0))
+
+        print("📤 Final payload to Supabase:", body)
+
         res = supabase.table("cafes").insert(body).execute()
-        print("🧪 Supabase raw response:", res)
+
+        print("🧪 Supabase full response:", res.__dict__)
         print("📦 Data:", res.data)
         print("⚠️ Error:", res.error)
         print("📊 Status Code:", getattr(res, 'status_code', 'unknown'))
@@ -76,4 +86,3 @@ def delete_cafe(cafe_id: int):
     if res.data:
         return {"message": "Cafe deleted"}
     raise HTTPException(status_code=404, detail="Cafe not found")
-
