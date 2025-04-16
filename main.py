@@ -1,7 +1,9 @@
+# main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from supabase import create_client, Client
 import os
+import traceback
 
 app = FastAPI()
 
@@ -37,8 +39,13 @@ def get_cafe(cafe_id: int):
 
 @app.post("/cafes")
 def add_cafe(cafe: Cafe):
-    res = supabase.table("cafes").insert(cafe.dict()).execute()
-    return res.data
+    try:
+        res = supabase.table("cafes").insert(cafe.dict()).execute()
+        return res.data
+    except Exception as e:
+        print("❌ Supabase insert error:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Supabase Error: {e}")
 
 @app.put("/cafes/{cafe_id}")
 def update_cafe(cafe_id: int, cafe: Cafe):
@@ -53,4 +60,3 @@ def delete_cafe(cafe_id: int):
     if res.data:
         return {"message": "Cafe deleted"}
     raise HTTPException(status_code=404, detail="Cafe not found")
-
