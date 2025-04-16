@@ -43,7 +43,12 @@ async def add_cafe(request: Request):
         body = await request.json()
         print("📥 RAW incoming JSON:", body)
 
-        # Skip validation for now
+        # Sanitize Unicode characters
+        if "hours" in body:
+            body["hours"] = body["hours"].replace("–", "-")
+        if "notes" in body and isinstance(body["notes"], str):
+            body["notes"] = body["notes"].replace("–", "-")
+
         res = supabase.table("cafes").insert(body).execute()
         print("🧪 Supabase raw response:", res)
         print("📦 Data:", res.data)
